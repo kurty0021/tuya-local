@@ -130,7 +130,6 @@ entities:
         optional: true
         name: min_temperature
   - entity: select
-    name: Output
     translation_key: mode
     category: config
     dps:
@@ -151,17 +150,6 @@ entities:
         type: boolean
         optional: true
         name: switch
-      - id: 28
-        name: brightness
-        type: string
-        optional: true
-        mapping:
-          - dps_val: low
-            value: 85
-          - dps_val: middle
-            value: 170
-          - dps_val: high
-            value: 255
   - entity: valve
     dps:
       - id: 7
@@ -269,17 +257,30 @@ entities:
           max: 35
   - entity: number
     name: Anti-freeze temperature
-    class: temperature
     category: config
     dps:
       - id: 27
         type: integer
         optional: true
         name: value
-        unit: C
+        unit: °
         range:
           min: 0
           max: 400
+  - entity: light
+    translation_key: display_brightness
+    dps:
+      - id: 28
+        name: brightness
+        type: string
+        optional: true
+        mapping:
+          - dps_val: low
+            value: 85
+          - dps_val: middle
+            value: 170
+          - dps_val: high
+            value: 255
   - entity: switch
     name: Override
     category: config
@@ -289,7 +290,7 @@ entities:
         optional: true
         name: switch
   - entity: select
-    translation_key: mode
+    translation_key: operation_mode
     dps:
       - id: 41
         type: string
