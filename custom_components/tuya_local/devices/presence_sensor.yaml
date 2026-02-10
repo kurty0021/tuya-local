@@ -1,0 +1,69 @@
+name: Presence sensor
+entities:
+  - entity: binary_sensor
+    class: occupancy
+    dps:
+      - id: 1
+        type: string
+        name: sensor
+        mapping:
+          - dps_val: "presence"
+            value: true
+          - dps_val: "none"
+            value: false
+  - entity: number
+    name: Sensitivity
+    category: config
+    icon: "mdi:motion-sensor"
+    dps:
+      - id: 2
+        type: integer
+        name: value
+        range:
+          min: 0
+          max: 19
+  - entity: number
+    name: Presence time
+    class: duration
+    icon: "mdi:camera-timer"
+    category: config
+    dps:
+      - id: 102
+        type: integer
+        name: value
+        unit: s
+        range:
+          min: 5
+          max: 28800
+  - entity: sensor
+    class: battery
+    dps:
+      - id: 110
+        type: integer
+        name: sensor
+        unit: "%"
+  - entity: sensor
+    class: illuminance
+    dps:
+      - id: 106
+        type: integer
+        name: sensor
+        unit: lx
+        class: measurement
+  - entity: number
+    name: Light Sensing Sampling
+    category: config
+    dps:
+      - id: 107
+        type: integer
+        name: value
+        range:
+          min: 1
+          max: 480
+  - entity: switch
+    name: Indicator
+    icon: "mdi:led-on"
+    dps:
+      - id: 108
+        type: boolean
+        name: switch
