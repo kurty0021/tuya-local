@@ -171,7 +171,11 @@ class TuyaDeviceConfig:
                     self.name,
                 )
             return False
-
+        _LOGGER.debug(
+            "Product matches %s: Dps: %s",
+            self.name,
+            [{dp.id: dp.type.__name__} for dp in self._get_all_dps()],
+        )
         return product_match or len(missing_dps) == 0
 
     def _get_all_dps(self):
