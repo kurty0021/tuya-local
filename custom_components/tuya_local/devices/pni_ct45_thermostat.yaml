@@ -268,7 +268,7 @@ entities:
           min: 0
           max: 400
   - entity: light
-    translation_key: display
+    translation_key: display_brightness
     dps:
       - id: 28
         name: brightness
@@ -290,7 +290,7 @@ entities:
         optional: true
         name: switch
   - entity: select
-    translation_key: mode
+    translation_key: operation_mode
     dps:
       - id: 41
         type: string
