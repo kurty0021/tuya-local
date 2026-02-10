@@ -150,6 +150,7 @@ class TuyaDeviceConfig:
             self.name,
             [{dp.id: dp.type.__name__} for dp in required_dps],
         )
+        _LOGGER.debug("DPs from sensor for %s: %s", self.name, dps)
         missing_dps = [dp for dp in required_dps if dp.id not in dps.keys()]
         if len(missing_dps) > 0:
             _LOGGER.debug(
