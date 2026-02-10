@@ -145,7 +145,11 @@ class TuyaDeviceConfig:
                     product_match = True
 
         required_dps = self._get_required_dps()
-
+        _LOGGER.debug(
+            "Required DPs for %s: %s",
+            self.name,
+            [{dp.id: dp.type.__name__} for dp in required_dps],
+        )
         missing_dps = [dp for dp in required_dps if dp.id not in dps.keys()]
         if len(missing_dps) > 0:
             _LOGGER.debug(
