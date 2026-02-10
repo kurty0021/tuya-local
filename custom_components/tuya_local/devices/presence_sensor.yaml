@@ -37,6 +37,7 @@ entities:
           max: 28800
   - entity: sensor
     class: battery
+    optional: true
     dps:
       - id: 110
         type: integer
