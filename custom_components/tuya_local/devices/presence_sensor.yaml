@@ -42,6 +42,7 @@ entities:
       - id: 110
         type: integer
         name: sensor
+        optional: true
         unit: "%"
   - entity: sensor
     class: illuminance
