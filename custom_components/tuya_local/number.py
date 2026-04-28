@@ -111,12 +111,19 @@ class TuyaLocalNumber(TuyaLocalEntity, NumberEntity):
     @property
     def native_value(self):
         """Return the current value of the number."""
-        val = self._value_dps.get_value(self._device)
-        if self._decimal_dps is not None:
-            decimal = self._decimal_dps.get_value(self._device)
-            if decimal is not None:
-                val = val + decimal
-        return val
+        if self._device.has_returned_state:
+            val = self._value_dps.get_value(self._device)
+            if self._decimal_dps is not None:
+                decimal = self._decimal_dps.get_value(self._device)
+                if decimal is not None:
+                    val = val + decimal
+            return val
+        if self._last_restored_state:
+            try:
+                return float(self._last_restored_state.state)
+            except (ValueError, TypeError):
+                return None
+        return None
 
     async def async_set_native_value(self, value):
         """Set the number."""

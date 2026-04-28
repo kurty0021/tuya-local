@@ -6,6 +6,7 @@ import logging
 from base64 import b64encode
 
 from homeassistant.components.lock import LockEntity, LockEntityFeature
+from homeassistant.const import STATE_LOCKED
 
 from .device import TuyaLocalDevice
 from .entity import TuyaLocalEntity
@@ -98,6 +99,8 @@ class TuyaLocalLock(TuyaLocalEntity, LockEntity):
     @property
     def is_locked(self):
         """Return the a boolean representing whether the lock is locked."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            return self._last_restored_state.state == STATE_LOCKED
         lock = None
         if self._lock_state_dp:
             lock = self._lock_state_dp.get_value(self._device)

@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
+from homeassistant.const import STATE_ON
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
@@ -76,10 +77,13 @@ class TuyaLocalFan(TuyaLocalEntity, FanEntity):
     @property
     def is_on(self):
         """Return whether the switch is on or not."""
-        # If there is no switch, it is always on
         if self._switch_dps is None:
             return self.available
-        return self._switch_dps.get_value(self._device)
+        if self._device.has_returned_state:
+            return self._switch_dps.get_value(self._device)
+        if self._last_restored_state:
+            return self._last_restored_state.state == STATE_ON
+        return None
 
     async def async_turn_on(
         self,

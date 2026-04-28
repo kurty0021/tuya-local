@@ -17,6 +17,7 @@ from homeassistant.components.light import (
     LightEntity,
     LightEntityFeature,
 )
+from homeassistant.const import STATE_ON
 
 from .device import TuyaLocalDevice
 from .entity import TuyaLocalEntity
@@ -142,6 +143,8 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
     @property
     def is_on(self):
         """Return the current state."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            return self._last_restored_state.state == STATE_ON
         if self._switch_dps:
             return self._switch_dps.get_value(self._device)
         elif self._brightness_dps:

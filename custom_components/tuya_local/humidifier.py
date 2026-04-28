@@ -10,6 +10,7 @@ from homeassistant.components.humidifier import (
     HumidifierEntity,
     HumidifierEntityFeature,
 )
+from homeassistant.const import STATE_ON
 from homeassistant.components.humidifier.const import (
     DEFAULT_MAX_HUMIDITY,
     DEFAULT_MIN_HUMIDITY,
@@ -74,10 +75,13 @@ class TuyaLocalHumidifier(TuyaLocalEntity, HumidifierEntity):
     @property
     def is_on(self):
         """Return whether the switch is on or not."""
-        # If there is no switch, it is always on if available
         if self._switch_dp is None:
             return self.available
-        return self._switch_dp.get_value(self._device)
+        if self._device.has_returned_state:
+            return self._switch_dp.get_value(self._device)
+        if self._last_restored_state:
+            return self._last_restored_state.state == STATE_ON
+        return None
 
     @property
     def action(self):

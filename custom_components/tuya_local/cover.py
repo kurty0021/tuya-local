@@ -100,6 +100,13 @@ class TuyaLocalCover(TuyaLocalEntity, CoverEntity):
     @property
     def current_cover_position(self):
         """Return current position of cover."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            pos = self._last_restored_state.attributes.get("current_position")
+            if pos is not None:
+                return pos
+            state = self._last_restored_state.state
+            return 0 if state in ("closed", "closing") else 100
+
         if self._currentpos_dp:
             pos = self._currentpos_dp.get_value(self._device)
             if pos is not None:

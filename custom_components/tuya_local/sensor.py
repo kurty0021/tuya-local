@@ -73,7 +73,14 @@ class TuyaLocalSensor(TuyaLocalEntity, SensorEntity):
     @property
     def native_value(self):
         """Return the value reported by the sensor"""
-        return self._sensor_dps.get_value(self._device)
+        if self._device.has_returned_state:
+            return self._sensor_dps.get_value(self._device)
+        if self._last_restored_state:
+            try:
+                return float(self._last_restored_state.state)
+            except (ValueError, TypeError):
+                return self._last_restored_state.state
+        return None
 
     @property
     def native_unit_of_measurement(self):

@@ -70,6 +70,11 @@ class TuyaLocalAlarmControlPanel(TuyaLocalEntity, AlarmControlPanelEntity):
     @property
     def alarm_state(self):
         """Return the current alarm state."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            try:
+                return AlarmControlPanelState(self._last_restored_state.state)
+            except ValueError:
+                pass
         if self._trigger_dp and self._trigger_dp.get_value(self._device):
             return AlarmControlPanelState.TRIGGERED
         return AlarmControlPanelState(

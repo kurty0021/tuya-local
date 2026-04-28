@@ -5,6 +5,7 @@ Setup for different kinds of Tuya switch devices
 import logging
 
 from homeassistant.components.switch import SwitchDeviceClass, SwitchEntity
+from homeassistant.const import STATE_ON
 
 from .device import TuyaLocalDevice
 from .entity import TuyaLocalEntity
@@ -57,10 +58,13 @@ class TuyaLocalSwitch(TuyaLocalEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return whether the switch is on or not."""
-        # if there is no switch, it is always on if available.
         if self._switch_dps is None:
             return self.available
-        return self._switch_dps.get_value(self._device)
+        if self._device.has_returned_state:
+            return self._switch_dps.get_value(self._device)
+        if self._last_restored_state:
+            return self._last_restored_state.state == STATE_ON
+        return None
 
     async def async_turn_on(self, **kwargs):
         """Turn the switch on"""

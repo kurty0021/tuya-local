@@ -94,6 +94,8 @@ class TuyaLocalValve(TuyaLocalEntity, ValveEntity):
     @property
     def is_closed(self):
         """Report whether the valve is closed."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            return self._last_restored_state.state == "closed"
         if self._switch_dp and self._switch_dp.get_value(self._device) is False:
             return True
         pos = self._valve_dp.get_value(self._device)

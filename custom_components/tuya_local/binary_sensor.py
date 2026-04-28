@@ -8,6 +8,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.const import STATE_ON
 
 from .device import TuyaLocalDevice
 from .entity import TuyaLocalEntity
@@ -63,4 +64,8 @@ class TuyaLocalBinarySensor(TuyaLocalEntity, BinarySensorEntity):
     @property
     def is_on(self):
         """Return true if the binary sensor is on."""
-        return self._sensor_dps.get_value(self._device)
+        if self._device.has_returned_state:
+            return self._sensor_dps.get_value(self._device)
+        if self._last_restored_state:
+            return self._last_restored_state.state == STATE_ON
+        return None

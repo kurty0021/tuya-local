@@ -99,6 +99,11 @@ class TuyaLocalVacuum(TuyaLocalEntity, StateVacuumEntity):
     @property
     def activity(self):
         """Return the state of the vacuum cleaner."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            try:
+                return VacuumActivity(self._last_restored_state.state)
+            except ValueError:
+                pass
         status = self.status
         if self._error_dps and self._error_dps.get_value(self._device):
             return VacuumActivity.ERROR

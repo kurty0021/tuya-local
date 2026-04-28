@@ -60,6 +60,11 @@ class TuyaLocalLawnMower(TuyaLocalEntity, LawnMowerEntity):
     @property
     def activity(self) -> LawnMowerActivity | None:
         """Return the status of the lawn mower."""
+        if not self._device.has_returned_state and self._last_restored_state:
+            try:
+                return LawnMowerActivity(self._last_restored_state.state)
+            except ValueError:
+                pass
         return LawnMowerActivity(self._activity_dp.get_value(self._device))
 
     async def async_start_mowing(self) -> None:
