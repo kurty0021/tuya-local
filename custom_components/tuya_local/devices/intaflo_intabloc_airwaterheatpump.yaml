@@ -176,7 +176,7 @@ entities:
         type: bitfield
         name: fault_code
   - entity: sensor
-    name: Inlet temperature
+    translation_key: inlet_temperature
     class: temperature
     category: diagnostic
     dps:
@@ -186,7 +186,7 @@ entities:
         unit: C
         class: measurement
   - entity: sensor
-    name: Outlet temperature
+    translation_key: outlet_temperature
     class: temperature
     category: diagnostic
     dps:
@@ -312,10 +312,8 @@ entities:
       - id: 114
         type: integer
         name: sensor
-        unit: MPa
+        unit: kPa
         class: measurement
-        mapping:
-          - scale: 1000
   - entity: sensor
     name: Low pressure
     class: pressure
@@ -324,10 +322,8 @@ entities:
       - id: 115
         type: integer
         name: sensor
-        unit: MPa
+        unit: kPa
         class: measurement
-        mapping:
-          - scale: 1000
   - entity: sensor
     name: Compressor frequency
     class: frequency

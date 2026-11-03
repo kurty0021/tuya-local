@@ -106,6 +106,26 @@
             "not_supported": "Съжаляваме, няма поддръжка за това устройство, все още"
         }
     },
+    "services": {
+        "send_learned_ir_command": {
+            "name": "Изпратете научена ИК команда",
+            "description": "Изпраща ИК команда, която е научена от устройството.",
+            "fields": {
+                "emitter_entity_id": {
+                    "name": "ИК излъчвател",
+                    "description": "ИК излъчвател, който ще изпрати командата. Ако не е посочено, ще се използва същият ИК излъчвател като за обучението на командата."
+                },
+                "command": {
+                    "name": "Команда",
+                    "description": "Команда, която да изпратите. Това трябва да е команда, която преди това е била научена от интеграцията за това дистанционно управление."
+                },
+                "device": {
+                    "name": "Устройство",
+                    "description": "Устройство, към което да изпратите командата. Това е незадължително и е необходимо само ако командата е запазена с устройство."
+                }
+            }
+        }
+    },
     "entity": {
         "binary_sensor": {
             "direction": {
@@ -193,6 +213,13 @@
                     "off": "OK",
                     "on": "Ниско"
                 }
+            },
+            "water_flow": {
+                "name": "Воден поток",
+                "state": {
+                    "off": "Блокиран",
+                    "on": "Поток"
+                }
             }
         },
         "button": {
@@ -201,6 +228,21 @@
             },
             "filter_reset": {
                 "name": "Филтър за ресетиране"
+            },
+            "alarm_off": {
+                "name": "Аларма изключване"
+            },
+            "alarm_snooze": {
+                "name": "Аларма отлагане"
+            },
+            "alarm_x_reset": {
+                "name": "Аларма {x} нулиране"
+            },
+            "radio_seek": {
+                "name": "Радио търсене"
+            },
+            "radio_stop": {
+                "name": "Радио стоп"
             }
         },
         "climate": {
@@ -275,7 +317,9 @@
                             "fan_only": "Вентилатор",
                             "heat": "Топлинен въздух",
                             "floor_cool": "Хладен под",
-                            "floor_heat": "Топъл под"
+                            "floor_heat": "Топъл под",
+                            "air_floor_cool": "Въздушно и подово охлаждане",
+                            "air_floor_heat": "Въздушно и подово отопление"
                         }
                     }
                 }
@@ -322,7 +366,9 @@
                             "program_2": "Програма 2",
                             "program_3": "Програма 3",
                             "standby": "Готовност",
-                            "fan_only": "Само вентилатор"
+                            "fan_only": "Само вентилатор",
+                            "program": "Програма",
+                            "anti_frost": "Анти замръзване"
                         }
                     }
                 }
@@ -374,6 +420,9 @@
         "event": {
             "alarm": {
                 "name": "Аларма"
+            },
+            "notification": {
+                "name": "Известие"
             }
         },
         "humidifier": {
@@ -390,6 +439,23 @@
             }
         },
         "fan": {
+            "air_purifier": {
+                "name": "Пречиствател на въздуха",
+                "state_attributes": {
+                    "preset_mode": {
+                        "state": {
+                            "auto": "Автоматично",
+                            "manual": "Ръководство",
+                            "sleep": "Сън",
+                            "low": "Ниско",
+                            "medium": "Средно",
+                            "high": "Високо",
+                            "strong": "Силен",
+                            "displayoff": "Дисплеят е изключен"
+                        }
+                    }
+                }
+            },
             "aroma_diffuser": {
                 "name": "Ароматизатор",
                 "state_attributes": {
@@ -452,7 +518,7 @@
                             "auto": "Автоматичен",
                             "manual": "Ръководство",
                             "eco": "Еко",
-                            "anti-condensation": "Антиконденз",
+                            "anti_condensation": "Антиконденз",
                             "extractor": "Екстрактор",
                             "heat_recovery": "Възстановяване на топлината",
                             "timer": "Таймер",
@@ -493,6 +559,12 @@
             },
             "rangehood_light": {
                 "name": "Светлина на абсорбатора"
+            },
+            "color_light": {
+                "name": "Цветна светлина"
+            },
+            "ambient_light": {
+                "name": "Околна светлина"
             }
         },
         "lock": {
@@ -501,6 +573,9 @@
             }
         },
         "number": {
+            "flame_level": {
+                "name": "Ниво на пламъка"
+            },
             "manual_feed": {
                 "name": "Ръчно подаване"
             },
@@ -533,6 +608,18 @@
             },
             "leakage_current": {
                 "name": "Ток на утечка"
+            },
+            "alarm_x_snooze_duration": {
+                "name": "Аларма {x} продължителност на отлагане"
+            },
+            "alarm_x_wake_light_lead_time": {
+                "name": "Аларма {x} предварително време на светлина"
+            },
+            "radio_frequency": {
+                "name": "Радио честота"
+            },
+            "snooze_duration": {
+                "name": "Продължителност на отлагане"
             }
         },
         "select": {
@@ -593,24 +680,32 @@
             "language": {
                 "name": "Език",
                 "state": {
+                    "bulgarian": "Български",
                     "chinese": "中文",
                     "chinese_traditional": "中文(繁體)",
+                    "czech": "Čeština",
                     "danish": "Dansk",
                     "dutch": "Nederlands",
                     "english": "English",
                     "english_child": "English (Child)",
                     "french": "Français",
                     "german": "Deutsch",
+                    "hungarian": "Magyar",
                     "italian": "Italiano",
                     "japanese": "日本語",
                     "korean": "한국어",
                     "latin": "Español latinoamericano",
+                    "polish": "Polski",
                     "portuguese": "Português",
+                    "romanian": "Română",
                     "russian": "Русский",
+                    "slovak": "Slovenčina",
                     "spanish": "Español",
+                    "thai": "ภาษาไทย",
                     "turkish": "Türkçe",
                     "polish": "Polski",
-                    "vietnamese": "Tiếng Việt"
+                    "vietnamese": "Tiếng Việt",
+                    "off": "Изключено"
                 }
             },
             "light_mode": {
@@ -621,7 +716,16 @@
                     "state": "Състояние",
                     "locator": "Локатор",
                     "auto": "Автоматично",
-                    "flash": "Флаш"
+                    "flash": "Флаш",
+                    "breathe": "Дишане",
+                    "random": "Случайно",
+                    "color": "Цвят",
+                    "favorite": "Любим",
+                    "multi_color": "Многоцветен",
+                    "custom": "Потребителски",
+                    "mode_1": "Режим 1",
+                    "mode_2": "Режим 2",
+                    "mode_3": "Режим 3"
                 }
             },
             "mopping": {
@@ -642,6 +746,14 @@
                     "low": "Ниско",
                     "medium": "Средно",
                     "high": "Високо"
+                }
+            },
+            "night_vision": {
+                "name": "Нощно виждане",
+                "state": {
+                    "off": "Изключено",
+                    "on": "Включено",
+                    "auto": "Автоматично"
                 }
             },
             "recipe": {
@@ -672,6 +784,13 @@
                     "preheat": "Предварително загряване"
                 }
             },
+            "recording_mode": {
+                "name": "Режим на запис",
+                "state": {
+                    "event": "Събитие",
+                    "continuous": "Непрекъснато"
+                }
+            },
             "scene": {
                 "name": "Сцена",
                 "state": {
@@ -695,6 +814,8 @@
                 "state": {
                     "cancel": "Отказ",
                     "continuous": "Непрекъснато",
+                    "custom": "Потребителски",
+                    "immediate": "Незабавно",
                     "5s": "5 секунди",
                     "10s": "10 секунди",
                     "15s": "15 секунди",
@@ -767,7 +888,16 @@
                     "4d": "4 дни",
                     "5d": "5 дни",
                     "6d": "6 дни",
-                    "7d": "7 дни"
+                    "7d": "7 дни",
+                    "10d": "10 дни",
+                    "30d": "30 дни",
+                    "60d": "60 дни",
+                    "80d": "80 дни",
+                    "90d": "90 дни",
+                    "100d": "100 дни",
+                    "120d": "120 дни",
+                    "160d": "160 дни",
+                    "365d": "365 дни"
                 }
             },
             "temperature_unit": {
@@ -986,11 +1116,82 @@
                     "red_bean_bread": "Хляб с червено боб",
                     "milk_toast": "Млечен тост"
                 }
+            },
+            "display_brightness": {
+                "name": "Яркост на дисплея",
+                "state": {
+                    "off": "Изключено",
+                    "day": "Ден",
+                    "night": "Нощ",
+                    "dim": "Приглушено",
+                    "bright": "Ярко",
+                    "auto": "Автоматично"
+                }
+            },
+            "seconds_dot": {
+                "name": "Точка за секунди",
+                "state": {
+                    "static": "Статично",
+                    "blinking": "Мигащо"
+                }
+            },
+            "alarm_x_snooze_action": {
+                "name": "Аларма {x} режим на отлагане",
+                "state": {
+                    "mute": "Заглушен звук",
+                    "mute_light": "Заглушен звук + светлина",
+                    "light_only": "Само заглушена светлина"
+                }
+            },
+            "alarm_x_sound_effect": {
+                "name": "Аларма {x} звуков ефект",
+                "state": {
+                    "normal": "Нормално",
+                    "fade_in": "Плавно усилване",
+                    "fade_out": "Плавно затихване"
+                }
+            },
+            "alarm_x_wake_light_mode": {
+                "name": "Аларма {x} режим будилна светлина",
+                "state": {
+                    "no_light": "Без светлина",
+                    "rainbow": "Дъга",
+                    "candle_flicker": "Трептене на свещ",
+                    "romantic_breath": "Романтично дишане",
+                    "quiet_deep_sea": "Тихо дълбоко море",
+                    "flowing_colors": "Течащи цветове",
+                    "magic_jungle": "Вълшебна джунгла",
+                    "perfect_party": "Перфектно парти",
+                    "sunrise_at_sea": "Изгрев на морето",
+                    "dynamic_music": "Динамична музика"
+                }
+            },
+            "snooze_action": {
+                "name": "Действие при отлагане",
+                "state": {
+                    "sound_radio": "Звук + радио",
+                    "light": "Светлина",
+                    "radio": "Радио",
+                    "radio_sound_light": "Радио + звук + светлина"
+                }
+            },
+            "time_format": {
+                "name": "Формат на времето",
+                "state": {
+                    "12_hour": "12 часа",
+                    "24_hour": "24 часа"
+                }
             }
         },
         "sensor": {
             "ambient_temperature": {
                 "name": "Температура на околната среда"
+            },
+            "inlet_temperature": {
+                "name": "Температура на входа"
+            },
+            "outlet_temperature": {
+                "name": "Температура на изхода"
             },
             "cleanliness": {
                 "name": "Чистота",
@@ -1009,6 +1210,17 @@
                     "poor": "Лошо",
                     "severe": "Тежко",
                     "danger": "Опасност"
+                }
+            },
+            "sd_status": {
+                "name": "Статус на SD картата",
+                "state": {
+                    "fault": "Неизправен",
+                    "formatting": "Форматиране",
+                    "full": "Пълен",
+                    "missing": "Липсва",
+                    "normal": "Нормално",
+                    "unformatted": "Неформатиран"
                 }
             },
             "status": {
@@ -1070,6 +1282,7 @@
                     "occupied": "Зает",
                     "normal": "Нормално",
                     "low": "Ниско",
+                    "medium": "Средно",
                     "high": "Високо",
                     "unwashed": "Непочистен",
                     "pre_washing": "Предварително измиване",
@@ -1089,8 +1302,6 @@
                     "full": "Пълен",
                     "empty": "Празен",
                     "missing": "Липсва",
-                    "formatting": "Форматиране",
-                    "unformatted": "Неформатиран",
                     "failed": "Неуспешен",
                     "replying": "Отговаряне",
                     "playback": "Възпроизвеждане",
@@ -1166,9 +1377,36 @@
             },
             "leakage_current": {
                 "name": "Ток на утечка"
+            },
+            "active_lights": {
+                "name": "Активни светлини",
+                "state": {
+                    "all_off": "Всички изключени",
+                    "night_on": "Нощна светлина включена",
+                    "color_on": "Цветна светлина включена",
+                    "ambient_on": "Околна светлина включена"
+                }
+            },
+            "wireless_charging": {
+                "name": "Статус на безжично зареждане",
+                "state": {
+                    "idle": "Свободен",
+                    "charging": "Зарежда се",
+                    "full": "Пълен",
+                    "foreign_object_detected": "Открит чужд предмет"
+                }
             }
         },
         "switch": {
+            "timer": {
+                "name": "Таймер"
+            },
+            "empty_tank": {
+                "name": "Изпразнете резервоара"
+            },
+            "fill_tank": {
+                "name": "Напълнете резервоара"
+            },
             "anti_frost": {
                 "name": "Анти-замръзване"
             },
@@ -1184,6 +1422,9 @@
                     "off": "Отворен",
                     "on": "Затворен"
                 }
+            },
+            "camera_record": {
+                "name": "Запис на камерата"
             },
             "do_not_disturb": {
                 "name": "Не безпокойте"
@@ -1229,6 +1470,54 @@
             },
             "rangehood": {
                 "name": "Абсорбатор"
+            },
+            "alarm_x": {
+                "name": "Аларма {x}"
+            },
+            "alarm_x_snooze_enabled": {
+                "name": "Аларма {x} отлагане активирано"
+            },
+            "alarm_x_day_monday": {
+                "name": "Аларма {x} ден 1-понеделник"
+            },
+            "alarm_x_day_tuesday": {
+                "name": "Аларма {x} ден 2-вторник"
+            },
+            "alarm_x_day_wednesday": {
+                "name": "Аларма {x} ден 3-сряда"
+            },
+            "alarm_x_day_thursday": {
+                "name": "Аларма {x} ден 4-четвъртък"
+            },
+            "alarm_x_day_friday": {
+                "name": "Аларма {x} ден 5-петък"
+            },
+            "alarm_x_day_saturday": {
+                "name": "Аларма {x} ден 6-събота"
+            },
+            "alarm_x_day_sunday": {
+                "name": "Аларма {x} ден 7-неделя"
+            },
+            "music_playback": {
+                "name": "Възпроизвеждане на музика"
+            },
+            "network_time": {
+                "name": "Синхронизация на мрежовото време"
+            },
+            "night_mode": {
+                "name": "Нощен режим"
+            },
+            "radio": {
+                "name": "Радио"
+            },
+            "snooze": {
+                "name": "Отлагане"
+            },
+            "motion_detection": {
+                "name": "Откриване на движение"
+            },
+            "watermark": {
+                "name": "Воден знак"
             }
         },
         "text": {
@@ -1240,6 +1529,15 @@
             },
             "schedule": {
                 "name": "График"
+            },
+            "alarm_settings": {
+                "name": "Аларма настройки"
+            },
+            "sleep_settings": {
+                "name": "Настройки за сън"
+            },
+            "station_list": {
+                "name": "Списък със станции"
             }
         },
         "time": {
@@ -1254,6 +1552,12 @@
             },
             "timer_x": {
                 "name": "Таймер {x}"
+            },
+            "alarm_x_time": {
+                "name": "Аларма {x} час"
+            },
+            "clock_time": {
+                "name": "Време на часовника"
             }
         },
         "valve": {
@@ -1270,6 +1574,26 @@
             },
             "hot_water": {
                 "name": "Гореща вода"
+            }
+        },
+        "siren": {
+            "alarm_x": {
+                "name": "Аларма {x}",
+                "state_attributes": {
+                    "tone": {
+                        "state": {
+                            "none": "Няма",
+                            "birds": "Птици",
+                            "sea": "Море",
+                            "valley": "Долина",
+                            "piano": "Piano",
+                            "soft": "Тихо",
+                            "phone": "Телефон",
+                            "beep": "Бийп",
+                            "radio": "Радио"
+                        }
+                    }
+                }
             }
         }
     }

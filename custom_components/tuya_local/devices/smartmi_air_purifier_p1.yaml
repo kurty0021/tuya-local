@@ -14,8 +14,7 @@ entities:
   # Fan (On/Off + Preset modes + Speed)
   # -------------------------------------------------------
   - entity: fan
-    translation_key: fan_with_presets
-    icon: mdi:air-purifier
+    translation_key: air_purifier
     dps:
       - id: 1
         name: switch
@@ -28,8 +27,6 @@ entities:
         range:
           min: 1
           max: 100
-        mapping:
-          - scale: 1
 
       - id: 3
         name: preset_mode
@@ -37,35 +34,47 @@ entities:
         mapping:
           # Map HA preset values to defined presets (keep device DP values)
           - dps_val: auto
-            value: smart
+            value: auto
           - dps_val: sleep
             value: sleep
           - dps_val: strong
             value: strong
           - dps_val: manual
-            value: normal
+            value: manual
 
   # -------------------------------------------------------
   # Sensors
   # -------------------------------------------------------
   - entity: sensor
     class: pm25
-    icon: mdi:air-filter
     dps:
       - id: 2
         name: sensor
         type: integer
         unit: "µg/m³"
+        class: measurement
+
+  - entity: sensor
+    class: pm10
+    category: diagnostic
+    dps:
+      - id: 102
+        type: integer
+        name: sensor
+        unit: ugm3
+        class: measurement
 
   - entity: sensor
     translation_key: filter_life
     category: diagnostic
-    class: duration
     dps:
-      - id: 105
+      - id: 104
         name: sensor
         type: integer
-        unit: h
+        unit: "%"
+      - id: 105
+        name: hours_used
+        type: integer
 
   # -------------------------------------------------------
   # Timer

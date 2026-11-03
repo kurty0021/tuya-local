@@ -1,8 +1,14 @@
 name: RGB ceiling light
 products:
-  - id: eb93523c41813016ac6ay1
-    manufacturer: Marpou
-    name: Five way ceiling lamp
+#   - id: UNKNOWN
+#     manufacturer: Marpou
+#     name: Five way ceiling lamp
+  - id: cu3qdyxbpo7g3dyi
+    manufacturer: Gledopto
+    model: GL-C-301W
+  - id: b9wmeyacp0thyuzp
+    manufacturer: Gledopto
+    model: GL-C-301W
 entities:
   - entity: light
     icon: "mdi:wall-sconce-flat-outline"

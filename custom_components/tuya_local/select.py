@@ -54,11 +54,7 @@ class TuyaLocalSelect(TuyaLocalEntity, SelectEntity):
     @property
     def current_option(self):
         "Return the currently selected option"
-        if self._device.has_returned_state:
-            return self._option_dps.get_value(self._device)
-        if self._last_restored_state:
-            return self._last_restored_state.state
-        return None
+        return self._option_dps.get_value(self._device)
 
     async def async_select_option(self, option):
         "Set the option"

@@ -33,13 +33,12 @@ entities:
   # ------------------------------------
   - entity: sensor
     class: battery
-    category: diagnostic
     # Battery Level Sensor (matches wireless_electricity: 145)
     dps:
       - id: 145
         type: integer
         name: sensor
-
+        unit: "%"
   - entity: binary_sensor
     class: battery_charging
     # Power Mode Sensor (matches wireless_powermode: 146)
@@ -99,9 +98,8 @@ entities:
         name: switch
 
   - entity: switch
-    name: Watermark
+    translation_key: watermark
     category: config
-    icon: "mdi:watermark"
     # Watermark/OSD Switch (matches basic_osd: 104)
     dps:
       - id: 104
@@ -109,8 +107,7 @@ entities:
         name: switch
 
   - entity: select
-    name: Night vision
-    icon: "mdi:weather-night"
+    translation_key: night_vision
     category: config
     # Night Vision Mode Selector (matches nightvision_mode: 124)
     dps:
@@ -119,18 +116,17 @@ entities:
         name: option
         mapping:
           - dps_val: "auto"
-            value: Auto
+            value: auto
           - dps_val: "color_mode"
-            value: Color Night Vision
+            value: "off"
           - dps_val: "ir_mode"
-            value: Infrared Night Vision
+            value: "on"
 
   # ------------------------------------
   # 4. Detection & Alarm
   # ------------------------------------
   - entity: switch
-    name: Motion detection
-    icon: "mdi:motion-sensor"
+    translation_key: motion_detection
     category: config
     # PIR Switch (matches ipc_pir_switch: 240)
     dps:
@@ -244,6 +240,7 @@ entities:
   # ------------------------------------
   - entity: sensor
     name: SD capacity
+    deprecated: sensor_sd_status.capacity  # 2026-08-19
     category: diagnostic
     icon: "mdi:micro-sd"
     # SD Capacity Sensor (matches sd_storge: 109)
@@ -254,11 +251,9 @@ entities:
         optional: true
 
   - entity: sensor
-    name: SD status
     class: enum
-    translation_key: status
+    translation_key: sd_status
     category: diagnostic
-    icon: "mdi:micro-sd"
     # SD Status Sensor (matches sd_status: 110)
     dps:
       - id: 110
@@ -277,6 +272,10 @@ entities:
             value: missing
           - dps_val: null
             value: normal
+      - id: 109
+        type: string
+        name: capacity
+        optional: true
 
   - entity: button
     name: SD format

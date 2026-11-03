@@ -3,6 +3,7 @@ Setup for different kinds of Tuya light devices
 """
 
 import logging
+from struct import error as StructError
 from struct import pack, unpack
 
 import homeassistant.util.color as color_util
@@ -17,7 +18,6 @@ from homeassistant.components.light import (
     LightEntity,
     LightEntityFeature,
 )
-from homeassistant.const import STATE_ON
 
 from .device import TuyaLocalDevice
 from .entity import TuyaLocalEntity
@@ -36,6 +36,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         "light",
         TuyaLocalLight,
     )
+
+
+def _ha_brightness_to_dp_value(ha_brightness, dp_range):
+    """Convert HA brightness to a clamped device DP value."""
+    if ha_brightness == 1 and dp_range[0] != 0:
+        return dp_range[0]
+
+    dp_value = color_util.brightness_to_value(dp_range, ha_brightness)
+    return max(dp_range[0], dp_value)
 
 
 class TuyaLocalLight(TuyaLocalEntity, LightEntity):
@@ -66,8 +75,9 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
             if m:
                 tr = m.get("target_range")
                 if tr:
-                    self._attr_min_color_temp_kelvin = tr.get("min")
-                    self._attr_max_color_temp_kelvin = tr.get("max")
+                    # Target range can be inverted, so use min/max functions to ensure correct order
+                    self._attr_min_color_temp_kelvin = min(tr.get("min"), tr.get("max"))
+                    self._attr_max_color_temp_kelvin = max(tr.get("min"), tr.get("max"))
                     range_set = True
             if not range_set:
                 r = self._color_temp_dps.range(self._device)
@@ -143,8 +153,6 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
     @property
     def is_on(self):
         """Return the current state."""
-        if not self._device.has_returned_state and self._last_restored_state:
-            return self._last_restored_state.state == STATE_ON
         if self._switch_dps:
             return self._switch_dps.get_value(self._device)
         elif self._brightness_dps:
@@ -180,9 +188,21 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
         return self._white_brightness
 
     @property
-    def _white_brightness(self):
+    def _effective_brightness_range(self):
+        """Get the effective brightness range of the light"""
         if self._brightness_dps:
             r = self._brightness_dps.range(self._device)
+            if r:
+                if self._switch_dps is None and r[0] == 0:
+                    # If the light has no switch, and the brightness range starts
+                    # at 0, the effective minimum brightness is 1
+                    return (self._brightness_dps.step(self._device, False), r[1])
+                return r
+
+    @property
+    def _white_brightness(self):
+        if self._brightness_dps:
+            r = self._effective_brightness_range
             val = self._brightness_dps.get_value(self._device)
             if r and val:
                 val = color_util.value_to_brightness(r, val)
@@ -195,26 +215,35 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
             color = self._rgbhsv_dps.decoded_value(self._device)
             fmt = self._rgbhsv_dps.format
             if fmt and color:
-                vals = unpack(fmt.get("format"), color)
-                idx = 0
-                rgbhsv = {}
-                for v in vals:
-                    # HA range: s = 0-100, rgbv = 0-255, h = 0-360
-                    n = fmt["names"][idx]
-                    r = fmt["ranges"][idx]
-                    mx = r["max"]
-                    scale = 1
-                    if n == "h":
-                        scale = 360 / mx
-                    elif n == "s":
-                        scale = 100 / mx
-                    elif n in ["v", "r", "g", "b"]:
-                        scale = 255 / mx
+                try:
+                    vals = unpack(fmt.get("format"), color)
+                    idx = 0
+                    rgbhsv = {}
+                    for v in vals:
+                        # HA range: s = 0-100, rgbv = 0-255, h = 0-360
+                        n = fmt["names"][idx]
+                        r = fmt["ranges"][idx]
+                        mx = r["max"]
+                        scale = 1
+                        if n == "h":
+                            scale = 360 / mx
+                        elif n == "s":
+                            scale = 100 / mx
+                        elif n in ["v", "r", "g", "b"]:
+                            scale = 255 / mx
 
-                    rgbhsv[n] = round(scale * v)
-                    idx += 1
+                        rgbhsv[n] = round(scale * v)
+                        idx += 1
 
-                return rgbhsv
+                    return rgbhsv
+                except StructError as e:
+                    _LOGGER.warning(
+                        "%s/%s: Failed to unpack rgbhsv data: %s",
+                        self._config._device.config,
+                        self.name or "light",
+                        e,
+                    )
+
         elif self._named_color_dps:
             colour = self._named_color_dps.get_value(self._device)
             if colour:
@@ -296,13 +325,9 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
                 color_mode = ColorMode.WHITE
             if ATTR_BRIGHTNESS not in params and self._brightness_dps:
                 bright = params.get(ATTR_WHITE)
-                r = self._brightness_dps.range(self._device)
+                r = self._effective_brightness_range
                 if r:
-                    # ensure full range is used
-                    if bright == 1 and r[0] != 0:
-                        bright = r[0]
-                    else:
-                        bright = color_util.brightness_to_value(r, bright)
+                    bright = _ha_brightness_to_dp_value(bright, r)
 
                 _LOGGER.info(
                     "%s setting white brightness to %d", self._config.config_id, bright
@@ -369,44 +394,47 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
                 )
 
                 current = self._unpacked_rgbhsv
-                ordered = []
-                idx = 0
-                for n in fmt["names"]:
-                    if n in rgbhsv:
-                        r = fmt["ranges"][idx]
-                        scale = 1
-                        if n == "s":
-                            scale = r["max"] / 100
-                        elif n == "h":
-                            scale = r["max"] / 360
+                if current:
+                    ordered = []
+                    idx = 0
+                    for n in fmt["names"]:
+                        if n in rgbhsv:
+                            r = fmt["ranges"][idx]
+                            scale = 1
+                            if n == "s":
+                                scale = r["max"] / 100
+                            elif n == "h":
+                                scale = r["max"] / 360
+                            else:
+                                scale = r["max"] / 255
+                            val = round(rgbhsv[n] * scale)
+                            if val < r["min"]:
+                                _LOGGER.warning(
+                                    "%s/%s: Color data %s=%d constrained to be above %d",
+                                    self._config._device.config,
+                                    self.name or "light",
+                                    n,
+                                    val,
+                                    r["min"],
+                                )
+                                val = r["min"]
                         else:
-                            scale = r["max"] / 255
-                        val = round(rgbhsv[n] * scale)
-                        if val < r["min"]:
-                            _LOGGER.warning(
-                                "%s/%s: Color data %s=%d constrained to be above %d",
-                                self._config._device.config,
-                                self.name or "light",
-                                n,
-                                val,
-                                r["min"],
-                            )
-                            val = r["min"]
-                    else:
-                        val = current[n]
-                    ordered.append(val)
-                    idx += 1
-                binary = pack(fmt["format"], *ordered)
-                encoded = self._rgbhsv_dps.encode_value(binary)
-                _LOGGER.info("%s setting color to %s", self._config.config_id, encoded)
-                settings = {
-                    **settings,
-                    **self._rgbhsv_dps.get_values_to_set(
-                        self._device,
-                        encoded,
-                        settings,
-                    ),
-                }
+                            val = current[n]
+                        ordered.append(val)
+                        idx += 1
+                    binary = pack(fmt["format"], *ordered)
+                    encoded = self._rgbhsv_dps.encode_value(binary)
+                    _LOGGER.info(
+                        "%s setting color to %s", self._config.config_id, encoded
+                    )
+                    settings = {
+                        **settings,
+                        **self._rgbhsv_dps.get_values_to_set(
+                            self._device,
+                            encoded,
+                            settings,
+                        ),
+                    }
         elif self._named_color_dps and ATTR_HS_COLOR in params:
             if self.color_mode != ColorMode.HS:
                 color_mode = ColorMode.HS
@@ -473,14 +501,9 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
         ):
             bright = params.get(ATTR_BRIGHTNESS)
 
-            r = self._brightness_dps.range(self._device)
+            r = self._effective_brightness_range
             if r:
-                # ensure full range is used
-                if bright == 1 and r[0] != 0:
-                    bright = r[0]
-                else:
-                    bright = color_util.brightness_to_value(r, bright)
-
+                bright = _ha_brightness_to_dp_value(bright, r)
             _LOGGER.info("%s setting brightness to %d", self._config.config_id, bright)
             settings = {
                 **settings,
@@ -504,11 +527,19 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
                     ),
                 }
 
+        # On packed dps where switch / brightness / effect all share the same
+        # dp id (e.g. dp 51 with different masks), the original `id not in
+        # settings` check incorrectly skipped the switch-on merge once any
+        # other masked sub-field had populated settings. For masked dps it's
+        # always safe to merge — get_values_to_set with pending_map=settings
+        # will OR onto the existing pending value.
         if (
             self._switch_dps
             and not self._switch_dps.readonly
             and not self.is_on
-            and self._switch_dps.id not in settings
+            and (
+                self._switch_dps.mask is not None or self._switch_dps.id not in settings
+            )
         ):
             _LOGGER.info("%s turning light on", self._config.config_id)
             settings = settings | self._switch_dps.get_values_to_set(
@@ -517,10 +548,13 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
         elif (
             self._brightness_dps
             and not self.is_on
-            and self._brightness_dps.id not in settings
+            and (
+                self._brightness_dps.mask is not None
+                or self._brightness_dps.id not in settings
+            )
         ):
             bright = 255
-            r = self._brightness_dps.range(self._device)
+            r = self._effective_brightness_range
             if r:
                 bright = color_util.brightness_to_value(r, bright)
             _LOGGER.info(
@@ -535,7 +569,9 @@ class TuyaLocalLight(TuyaLocalEntity, LightEntity):
             self._effect_dps
             and not self.is_on
             and "off" in self._effect_dps.values(self._device)
-            and self._effect_dps.id not in settings
+            and (
+                self._effect_dps.mask is not None or self._effect_dps.id not in settings
+            )
         ):
             # Special case for lights with effect that has off state, but no switch or brightness
             on_value = self._effect_dps.default

@@ -6,14 +6,11 @@ import json
 import logging
 
 from homeassistant.const import (
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
     UnitOfArea,
+    UnitOfDensity,
     UnitOfTemperature,
 )
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.restore_state import RestoreEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,14 +18,13 @@ _LOGGER = logging.getLogger(__name__)
 BLACKLISTED_ATTRIBUTES = ["state", "available"]
 
 
-class TuyaLocalEntity(RestoreEntity):
+class TuyaLocalEntity:
     """Common functions for all entity types."""
 
     def _init_begin(self, device, config):
         self._device = device
         self._config = config
         self._attr_dps = []
-        self._last_restored_state = None
         self._attr_translation_key = (
             config.translation_key or config.translation_only_key
         )
@@ -47,9 +43,7 @@ class TuyaLocalEntity(RestoreEntity):
 
     @property
     def available(self):
-        if self._device.has_returned_state:
-            return self._config.available(self._device)
-        return self._last_restored_state is not None
+        return self._device.has_returned_state and self._config.available(self._device)
 
     @property
     def has_entity_name(self):
@@ -61,7 +55,7 @@ class TuyaLocalEntity(RestoreEntity):
         own_name = self._config.name
         if not own_name and not self.use_device_name:
             # super has the translation logic
-            own_name = getattr(super(), "name")
+            own_name = super().name
         return own_name
 
     @property
@@ -113,7 +107,7 @@ class TuyaLocalEntity(RestoreEntity):
                 if a.rawtype == "json":
                     try:
                         value = json.loads(value)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError, TypeError:
                         if value is not None:
                             _LOGGER.warning(
                                 "Failed to decode JSON for attribute %s: %s",
@@ -132,16 +126,10 @@ class TuyaLocalEntity(RestoreEntity):
         await self._device.async_refresh()
 
     async def async_added_to_hass(self):
-        await super().async_added_to_hass()
         self._device.register_entity(self)
         _LOGGER.debug("Adding %s for %s", self._config.config_id, self._device.name)
         if self._config.deprecated:
             _LOGGER.warning(self._config.deprecation_message)
-        if not self._device.has_returned_state:
-            last_state = await self.async_get_last_state()
-            if last_state and last_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-                self._last_restored_state = last_state
-                self.async_schedule_update_ha_state()
 
     async def async_will_remove_from_hass(self):
         _LOGGER.debug("Removing %s for %s", self._config.config_id, self._device.name)
@@ -155,8 +143,8 @@ class TuyaLocalEntity(RestoreEntity):
 UNIT_ASCII_MAP = {
     "C": UnitOfTemperature.CELSIUS.value,
     "F": UnitOfTemperature.FAHRENHEIT.value,
-    "ugm3": CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    "m2": UnitOfArea.SQUARE_METERS,
+    "ugm3": UnitOfDensity.MICROGRAMS_PER_CUBIC_METER.value,
+    "m2": UnitOfArea.SQUARE_METERS.value,
 }
 
 

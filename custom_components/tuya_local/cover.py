@@ -100,13 +100,6 @@ class TuyaLocalCover(TuyaLocalEntity, CoverEntity):
     @property
     def current_cover_position(self):
         """Return current position of cover."""
-        if not self._device.has_returned_state and self._last_restored_state:
-            pos = self._last_restored_state.attributes.get("current_position")
-            if pos is not None:
-                return pos
-            state = self._last_restored_state.state
-            return 0 if state in ("closed", "closing") else 100
-
         if self._currentpos_dp:
             pos = self._currentpos_dp.get_value(self._device)
             if pos is not None:
@@ -160,7 +153,7 @@ class TuyaLocalCover(TuyaLocalEntity, CoverEntity):
             and self._position_dp
         ):
             setpos = self._position_dp.get_value(self._device)
-            if setpos == pos:
+            if setpos is not None and abs(setpos - pos) <= 2:
                 # if the current position is around the set position,
                 # which is not closed, then we want is_closed to return
                 # false, so HA gets the full state from position.

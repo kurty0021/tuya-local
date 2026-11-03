@@ -5,7 +5,6 @@ Setup for Tuya siren devices
 import logging
 
 from homeassistant.components.siren import SirenEntity, SirenEntityFeature
-from homeassistant.const import STATE_ON
 from homeassistant.components.siren.const import (
     ATTR_DURATION,
     ATTR_TONE,
@@ -74,8 +73,6 @@ class TuyaLocalSiren(TuyaLocalEntity, SirenEntity):
     @property
     def is_on(self):
         """Return whether the siren is on."""
-        if not self._device.has_returned_state and self._last_restored_state:
-            return self._last_restored_state.state == STATE_ON
         if self._switch_dp:
             return self._switch_dp.get_value(self._device)
         if self._tone_dp:

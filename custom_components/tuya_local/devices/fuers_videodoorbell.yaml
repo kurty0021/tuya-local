@@ -16,8 +16,7 @@ entities:
             value: false
             hidden: true
   - entity: switch
-    name: Watermark
-    icon: "mdi:watermark"
+    translation_key: watermark
     category: config
     dps:
       - id: 104
@@ -29,11 +28,9 @@ entities:
             value: false
             hidden: true
   - entity: sensor
-    name: SD status
     class: enum
-    translation_key: status
+    translation_key: sd_status
     category: diagnostic
-    icon: "mdi:micro-sd"
     dps:
       - id: 110
         type: integer
@@ -116,7 +113,6 @@ entities:
         name: message
   - entity: sensor
     class: battery
-    category: diagnostic
     dps:
       - id: 145
         type: integer

@@ -3,6 +3,12 @@ products:
   - id: bSXSSFArVKtc4DyC
     manufacturer: BlitzWolf
     model: WF-DS01 wall dimmer
+  - id: ue3zax30gexryaed
+    manufacturer: Martin Jerry
+    model: US-STD-KN01
+  - id: p4ggwwivvdtrofzr
+    manufacturer: Martin Jerry
+    model: US-SD-TC01
 entities:
   - entity: light
     dps:

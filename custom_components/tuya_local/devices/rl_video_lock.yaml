@@ -3,7 +3,31 @@ products:
   - id: i6p5va1gvcagcude
     model: RL-617B17WIFI
 entities:
+  - entity: switch
+    translation_key: camera_record
+    dps:
+      - id: 150
+        type: boolean
+        optional: true
+        name: switch
+  - entity: event
+    class: doorbell
+    name: Door image
+    dps:
+      - id: 154
+        type: base64
+        name: event
+        optional: true
+        mapping:
+          - dps_val: null
+            value: null
+          - value: ring
+      - id: 154
+        type: base64
+        optional: true
+        name: snapshot
   - entity: camera
+    deprecated: switch_camera_record, event_door_image  # 2026-06-08
     dps:
       - id: 150
         name: record
@@ -17,10 +41,6 @@ entities:
         type: base64
         optional: true
         sensitive: true
-      - id: 191
-        name: smart_action
-        type: string
-        optional: true
   - entity: lock
     name: Lock 1
     dps:
@@ -52,7 +72,7 @@ entities:
         optional: true
         name: doorbell
   - entity: event
-    name: Notification
+    translation_key: notification
     dps:
       - id: 185
         type: utf16b64

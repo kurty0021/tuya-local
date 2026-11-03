@@ -123,11 +123,12 @@ class TuyaLocalWaterHeater(TuyaLocalEntity, WaterHeaterEntity):
     @property
     def current_operation(self):
         """Return current operation ie. eco, electric, performance, ..."""
-        if not self._device.has_returned_state and self._last_restored_state:
-            return self._last_restored_state.state
         if self._operation_mode_dps is None:
             return None
-        return self._operation_mode_dps.get_value(self._device)
+        mode = self._operation_mode_dps.get_value(self._device)
+        if mode == "away":
+            return "eco"
+        return mode
 
     @property
     def operation_list(self):
@@ -135,16 +136,18 @@ class TuyaLocalWaterHeater(TuyaLocalEntity, WaterHeaterEntity):
         if self._operation_mode_dps is None:
             return []
         else:
-            return self._operation_mode_dps.values(self._device)
+            return list(
+                filter(
+                    lambda x: x != "away", self._operation_mode_dps.values(self._device)
+                )
+            )
 
     @property
     def is_away_mode_on(self):
         if self._away_mode_dps:
             return self._away_mode_dps.get_value(self._device)
-        elif self._operation_mode_dps and (
-            "away" in self._operation_mode_dps.values(self._device)
-        ):
-            return self.current_operation == "away"
+        elif self._operation_mode_dps:
+            return self._operation_mode_dps.get_value(self._device) == "away"
 
     @property
     def current_temperature(self):
@@ -198,7 +201,9 @@ class TuyaLocalWaterHeater(TuyaLocalEntity, WaterHeaterEntity):
         if self._operation_mode_dps is None:
             raise NotImplementedError()
         _LOGGER.info(
-            "%s setting operation mode to %s", self._config.config_id, operation_mode
+            "%s setting operation mode to %s",
+            self._config.config_id,
+            operation_mode,
         )
         await self._operation_mode_dps.async_set_value(
             self._device,

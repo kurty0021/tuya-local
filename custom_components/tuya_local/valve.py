@@ -42,6 +42,7 @@ class TuyaLocalValve(TuyaLocalEntity, ValveEntity):
         dps_map = self._init_begin(device, config)
         self._valve_dp = dps_map.pop("valve")
         self._switch_dp = dps_map.pop("switch", None)
+        self._current_position_dp = dps_map.pop("current_position", None)
         self._init_end(dps_map)
 
         if not self._valve_dp.readonly or self._switch_dp:
@@ -85,20 +86,19 @@ class TuyaLocalValve(TuyaLocalEntity, ValveEntity):
         )
 
     @property
-    def current_position(self):
+    def current_valve_position(self):
         """Report the position of the valve."""
-        pos = self._valve_dp.get_value(self._device)
+        position_dp = self._current_position_dp or self._valve_dp
+        pos = position_dp.get_value(self._device)
         if isinstance(pos, int):
             return pos
 
     @property
     def is_closed(self):
         """Report whether the valve is closed."""
-        if not self._device.has_returned_state and self._last_restored_state:
-            return self._last_restored_state.state == "closed"
         if self._switch_dp and self._switch_dp.get_value(self._device) is False:
             return True
-        pos = self._valve_dp.get_value(self._device)
+        pos = self.current_valve_position
         return not pos
 
     async def async_open_valve(self):

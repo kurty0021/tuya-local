@@ -1,6 +1,6 @@
 name: EV charger
 products:
-  - id: e1kw2auo
+  - id: cxriym8xwbnj4xdl
     manufacturer: Andalung
     model: "Portable EV Charger"
 entities:
@@ -197,6 +197,7 @@ entities:
     name: Connection
     icon: "mdi:ev-plug-type2"
     class: enum
+    translation_key: status
     category: diagnostic
     dps:
       - id: 13
@@ -204,7 +205,7 @@ entities:
         name: sensor
         mapping:
           - dps_val: controlpi_12v
-            value: Standby
+            value: standby
           - dps_val: controlpi_12v_pwm
             value: Communication initialising
           - dps_val: controlpi_9v
@@ -214,9 +215,9 @@ entities:
           - dps_val: controlpi_6v
             value: Ready to charge
           - dps_val: controlpi_6v_pwm
-            value: Charging
+            value: charging
           - dps_val: controlpi_error
-            value: Error
+            value: fault
   - entity: select
     translation_key: charging_mode
     category: config
@@ -235,10 +236,6 @@ entities:
             value: scheduled_charge
           - dps_val: charge_delay
             value: delayed_charge
-      - id: 33
-        optional: true
-        type: base64
-        name: mode_set
   - entity: sensor
     name: Remaining
     class: energy_storage
@@ -309,10 +306,24 @@ entities:
         optional: true
         name: sensor
         unit: kWh
+        class: measurement
         mapping:
           - scale: 100
+  - entity: switch
+    name: Real time updates
+    category: config
+    dps:
+      - id: 27
+        type: string
+        name: switch
+        mapping:
+          - dps_val: online
+            value: true
+          - dps_val: offline
+            value: false
   - entity: binary_sensor
     class: connectivity
+    deprecated: switch_real_time_updates  # 2026-06-29
     category: diagnostic
     dps:
       - id: 27
@@ -337,3 +348,12 @@ entities:
         range:
           min: 0
           max: 12
+  - entity: text
+    name: Mode set
+    category: config
+    hidden: true
+    dps:
+      - id: 33
+        type: base64
+        optional: true
+        name: value

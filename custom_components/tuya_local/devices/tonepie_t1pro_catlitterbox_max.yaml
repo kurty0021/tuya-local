@@ -124,7 +124,7 @@ entities:
         name: button
   # Controls the device's LED lighting
   - entity: light
-    name: Ambient light
+    translation_key: ambient_light
     category: config
     dps:
       - id: 113
@@ -285,6 +285,7 @@ entities:
         type: integer
         name: sensor
         unit: °C
+        class: measurement
   # Internal humidity level
   - entity: sensor
     class: humidity
@@ -293,6 +294,7 @@ entities:
         type: integer
         name: sensor
         unit: "%"
+        class: measurement
   # Detects if cat is currently in the box
   - entity: binary_sensor
     icon: "mdi:cat"
@@ -308,14 +310,15 @@ entities:
   # Event Notifications
   # Various device status and activity notifications
   - entity: event
-    name: Notification
-    icon: "mdi:bell"
+    translation_key: notification
     dps:
       - id: 21
         type: bitfield
         name: event
         persist: false
         mapping:
+          - dps_val: 0
+            value: "Normal"
           - dps_val: 1
             value: "Garbage Box Full"
           - dps_val: 2

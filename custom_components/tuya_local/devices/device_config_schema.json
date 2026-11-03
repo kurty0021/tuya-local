@@ -30,10 +30,6 @@
                     "model_id": {
                         "type": "string",
                         "description": "Optional model identifier for the device if it has both a readable name and a cryptic id."
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "Optional name to override the device name."
                     }
                 },
                 "required": ["id"],
@@ -49,7 +45,7 @@
                 "properties": {
                     "entity": {
                         "type": "string",
-                        "enum": ["alarm_control_panel", "binary_sensor", "button", "camera", "climate", "cover", "datetime", "event", "fan", "humidifier", "infrared", "lawn_mower", "light", "lock", "number", "remote", "select", "sensor", "siren", "switch", "text", "time", "vacuum", "valve", "water_heater"],
+                        "enum": ["alarm_control_panel", "binary_sensor", "button", "climate", "cover", "datetime", "event", "fan", "humidifier", "infrared", "lawn_mower", "light", "lock", "number", "remote", "select", "sensor", "siren", "switch", "text", "time", "vacuum", "valve", "water_heater"],
                         "description": "The type of entity (e.g., light, switch, sensor)."
                     },
                     "name": {
@@ -417,6 +413,10 @@
                                                         "invalid": {
                                                             "type": "boolean",
                                                             "description": "true if this condition indicates an invalid state."
+                                                        },
+                                                        "invert": {
+                                                            "type": "boolean",
+                                                            "description": "true to invert the value within the range when this condition is matched."
                                                         },
                                                         "mapping": {
                                                             "type": "array",

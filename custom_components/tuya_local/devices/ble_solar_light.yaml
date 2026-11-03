@@ -2,7 +2,7 @@ name: Motion light
 products:
   - id: bt1raf68
     manufacturer: Smart Ape
-    name: Solar garden light
+    model: Solar garden light
 entities:
   - entity: light
     dps:
@@ -169,8 +169,7 @@ entities:
           max: 3600
         unit: s
   - entity: switch
-    name: Motion detection
-    icon: "mdi:motion-sensor"
+    translation_key: motion_detection
     category: config
     dps:
       - id: 56
@@ -211,7 +210,6 @@ entities:
             value: false
   - entity: sensor
     class: battery
-    category: diagnostic
     dps:
       - id: 62
         type: string

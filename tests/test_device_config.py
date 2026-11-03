@@ -1,5 +1,8 @@
 """Test the config parser"""
 
+import gc
+import warnings
+
 import pytest
 import voluptuous as vol
 from fuzzywuzzy import fuzz
@@ -22,8 +25,9 @@ from .helpers import assert_device_properties_set, mock_device
 
 PRODUCT_SCHEMA = vol.Schema(
     {
-        vol.Required("id"): str,
-        vol.Optional("name"): str,
+        # Bluetooth and Zigbee devices have 8 character product ids
+        # WiFi devices have 16 character product ids
+        vol.Required("id"): vol.All(str, vol.Length(min=8, max=16)),
         vol.Optional("manufacturer"): str,
         vol.Optional("model"): str,
         vol.Optional("model_id"): str,
@@ -41,8 +45,8 @@ CONDMAP_SCHEMA = vol.Schema(
             vol.Required("max"): int,
         },
         vol.Optional("target_range"): {
-            vol.Required("min"): int,
-            vol.Required("max"): int,
+            vol.Required("min"): vol.Any(int, float),
+            vol.Required("max"): vol.Any(int, float),
         },
         vol.Optional("scale"): vol.Any(int, float),
         vol.Optional("step"): vol.Any(int, float),
@@ -57,7 +61,7 @@ CONDMAP_SCHEMA = vol.Schema(
 )
 COND_SCHEMA = CONDMAP_SCHEMA.extend(
     {
-        vol.Required("dps_val"): vol.Maybe(vol.Any(str, int, bool, list)),
+        vol.Required("dps_val"): vol.Maybe(vol.Any(str, int, bool, list, float)),
         vol.Optional("mapping"): [CONDMAP_SCHEMA],
     }
 )
@@ -140,6 +144,7 @@ ENTITY_SCHEMA = vol.Schema(
                 "lawn_mower",
                 "light",
                 "lock",
+                "media_player",
                 "number",
                 "remote",
                 "select",
@@ -259,6 +264,26 @@ KNOWN_DPS = {
             "jammed",
         ],
     },
+    "media_player": {
+        "required": [],
+        "optional": [
+            "switch",
+            "volume",
+            "mute",
+            "source",
+            "playback_state",
+            "play",
+            "pause",
+            "prev",
+            "next",
+            "stop",
+            "seek_position",
+            "clear_playlist",
+            "shuffle",
+            "repeat",
+            "sound_mode",
+        ],
+    },
     "number": {
         "required": ["value"],
         "optional": ["unit", "minimum", "maximum", "decimal"],
@@ -291,7 +316,7 @@ KNOWN_DPS = {
     },
     "valve": {
         "required": ["valve"],
-        "optional": ["switch"],
+        "optional": ["switch", "current_position"],
     },
     "water_heater": {
         "required": [],
@@ -311,10 +336,22 @@ KNOWN_DPS = {
 def test_can_find_config_files():
     """Test that the config files can be found by the parser."""
     found = False
-    for cfg in available_configs():
+    for _ in available_configs():
         found = True
         break
     assert found
+
+
+def test_available_configs_closes_scandir_handle():
+    """Test that the scandir handle is closed when the generator is dropped."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        configs = available_configs()
+        next(configs)
+        del configs
+        gc.collect()
+
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
 
 
 def dp_match(condition, accounted, unaccounted, known, required=False):
@@ -427,10 +464,11 @@ def check_entity(entity, cfg, mocker):
     # for later checking
     for dp in entity.dps():
         line = dp._config.__line__
+        dp_type = dp._config.get("type")
         assert dp._config.get("id") is not None, (
             f"\n::error file={fname},line={line}::dp id missing from {e} in {cfg}"
         )
-        assert dp._config.get("type") is not None, (
+        assert dp_type is not None, (
             f"\n::error file={fname},line={line}::dp type missing from {e} in {cfg}"
         )
         assert dp._config.get("name") is not None, (
@@ -447,11 +485,19 @@ def check_entity(entity, cfg, mocker):
             assert isinstance(conditions, list), (
                 f"\n::error file={fname},line={line}::conditions is not a list in {cfg}; entity {e}, dp {dp.name}"
             )
+            if m.get("invert") and dp_type not in ["integer", "hex", "base64"]:
+                pytest.fail(
+                    f"\n::error file={fname},line={line}::invert is only valid for numeric values in {cfg}; entity {e}, dp {dp.name}"
+                )
             for c in conditions:
                 if c.get("value_redirect"):
                     redirects.add(c.get("value_redirect"))
                 if c.get("value_mirror"):
                     redirects.add(c.get("value_mirror"))
+                if c.get("invert") and dp_type not in ["integer", "hex", "base64"]:
+                    pytest.fail(
+                        f"\n::error file={fname},line={line}::invert is only valid for numeric values in {cfg}; entity {e}, dp {dp.name}"
+                    )
             if m.get("value_redirect"):
                 redirects.add(m.get("value_redirect"))
             if m.get("value_mirror"):
@@ -540,7 +586,7 @@ def test_config_files_parse(mocker):
             if entity.config_id in entities:
                 pytest.fail(
                     f"\n::error file={fname},line={entity._config.__line__}::"
-                    "Duplicate entity {entity.config_id} in {cfg}"
+                    f"Duplicate entity {entity.config_id} in {cfg}"
                 )
             entities.append(entity.config_id)
 
@@ -766,10 +812,11 @@ def test_values_with_mirror(mocker):
 
 
 def test_get_device_id():
-    """Test that check if device id is correct"""
+    """Test that child devices are scoped to their gateway."""
     assert "my-device-id" == get_device_id({"device_id": "my-device-id"})
     assert "sub-id" == get_device_id({"device_cid": "sub-id"})
-    assert "s" == get_device_id({"device_id": "d", "device_cid": "s"})
+    assert "d/s" == get_device_id({"device_id": "d", "device_cid": "s"})
+    assert "other/s" == get_device_id({"device_id": "other", "device_cid": "s"})
 
 
 def test_getting_masked_hex(mocker):
@@ -800,6 +847,42 @@ def test_setting_masked_hex(mocker):
     mock_device.get_property.return_value = "babe"
     cfg = TuyaDpsConfig(mock_entity, mock_config)
     assert cfg.get_values_to_set(mock_device, 0xCA) == {"1": "cabe"}
+
+
+def test_getting_masked_b64_with_special_case_mapping(mocker):
+    """Test that get_value works with masked hex encoding and a mapping that has a special case."""
+    mock_entity = mocker.MagicMock()
+    mock_config = {
+        "id": "1",
+        "name": "test",
+        "type": "base64",
+        "mask": "ffff",
+        "mapping": [
+            {"dps_val": 256, "value": "special_case"},
+        ],
+    }
+    mock_device = mocker.MagicMock()
+    mock_device.get_property.return_value = "AQA="
+    cfg = TuyaDpsConfig(mock_entity, mock_config)
+    assert cfg.get_value(mock_device) == "special_case"
+
+
+def test_setting_masked_b64_with_special_case_mapping(mocker):
+    """Test that get_values_to_set works with masked hex encoding and a mapping that has a special case."""
+    mock_entity = mocker.MagicMock()
+    mock_config = {
+        "id": "1",
+        "name": "test",
+        "type": "base64",
+        "mask": "ffff",
+        "mapping": [
+            {"dps_val": 256, "value": "special_case"},
+        ],
+    }
+    mock_device = mocker.MagicMock()
+    mock_device.get_property.return_value = "AAA="
+    cfg = TuyaDpsConfig(mock_entity, mock_config)
+    assert cfg.get_values_to_set(mock_device, "special_case") == {"1": "AQA="}
 
 
 def test_default_without_mapping(mocker):

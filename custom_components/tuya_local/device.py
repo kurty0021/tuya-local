@@ -5,7 +5,6 @@ API for Tuya Local devices.
 import asyncio
 import logging
 from asyncio.exceptions import CancelledError
-from threading import Lock
 from time import time
 
 import tinytuya
@@ -33,6 +32,14 @@ from .helpers.device_config import possible_matches
 from .helpers.log import log_json
 
 _LOGGER = logging.getLogger(__name__)
+
+# Extra context for tinytuya error codes whose message does not fully describe
+# the possible causes.  Error 914 in particular is reported for any failure to
+# negotiate a session, which includes a device that is refusing connections
+# until it is power cycled, not just a misconfigured key or protocol version.
+_ERROR_HINTS = {
+    "914": "  If previously running OK, likely the device needs to be power cycled.",
+}
 
 
 def _collect_possible_matches(cached_state, product_ids):
@@ -81,6 +88,7 @@ class TuyaLocalDevice(object):
         self._api_protocol_version_index = None
         self._api_protocol_working = False
         self._api_working_protocol_failures = 0
+        self.dev_id = dev_id
         self.dev_cid = dev_cid
         try:
             if dev_cid:
@@ -148,15 +156,14 @@ class TuyaLocalDevice(object):
         # we can overlay onto the state while we wait for the board to update
         # its switches.
         self._FAKE_IT_TIMEOUT = 5
-        self._CACHE_TIMEOUT = 30
-        self._HEARTBEAT_INTERVAL = 10
+        self._POLLING_INTERVAL = 30
+        self._HEARTBEAT_INTERVAL = 5
         # More attempts are needed in auto mode so we can cycle through all
         # the possibilities a couple of times
         self._AUTO_CONNECTION_ATTEMPTS = len(API_PROTOCOL_VERSIONS) * 2 + 1
         self._SINGLE_PROTO_CONNECTION_ATTEMPTS = 3
         # The number of failures from a working protocol before retrying other protocols.
         self._AUTO_FAILURE_RESET_COUNT = 10
-        self._lock = Lock()
 
     @property
     def name(self):
@@ -164,8 +171,12 @@ class TuyaLocalDevice(object):
 
     @property
     def unique_id(self):
-        """Return the unique id for this device (the dev_id or dev_cid)."""
-        return self.dev_cid or self._api.id
+        """Return the unique ID for this device."""
+        if self.dev_cid:
+            return get_device_id(
+                {CONF_DEVICE_ID: self.dev_id, CONF_DEVICE_CID: self.dev_cid}
+            )
+        return self._api.id
 
     @property
     def device_info(self):
@@ -264,7 +275,17 @@ class TuyaLocalDevice(object):
 
                     for entity in self._children:
                         # let entities trigger off poll contents directly
-                        entity.on_receive(poll, full_poll)
+                        try:
+                            entity.on_receive(poll, full_poll)
+                        except Exception as e:
+                            # Don't let exceptions thrown by the entities interrupt the communication loop
+                            # Just log them and move on.
+                            _LOGGER.exception(
+                                "%s on_receive error for entity %s: %s",
+                                self.name,
+                                entity.entity_id,
+                                e,
+                            )
                         # clear non-persistant dps that were not in a full poll
                         if full_poll:
                             for dp in entity._config.dps():
@@ -283,9 +304,13 @@ class TuyaLocalDevice(object):
             _LOGGER.exception(
                 "%s receive loop terminated by exception %s", self.name, t
             )
+        finally:
+            # Ensure the persistent connection is closed when the loop exits
+            # and device appears as unavailable
             self._api.set_socketPersistent(False)
             if self._api.parent:
                 self._api.parent.set_socketPersistent(False)
+            self._reset_cached_state()
 
     @property
     def should_poll(self):
@@ -293,6 +318,7 @@ class TuyaLocalDevice(object):
 
     def pause(self):
         self._temporary_poll = True
+        _LOGGER.debug("%s pausing connection temporarily", self.name, False)
         self._api.set_socketPersistent(False)
         if self._api.parent:
             self._api.parent.set_socketPersistent(False)
@@ -314,15 +340,17 @@ class TuyaLocalDevice(object):
             self._api.parent.set_socketPersistent(persist)
 
         last_heartbeat = self._cached_state.get("updated_at", 0)
+        wifi_api = self._api.parent or self._api
         while self._running:
             error_count = self._api_working_protocol_failures
             force_backoff = False
             try:
-                await self._api_lock.acquire()
                 last_cache = self._cached_state.get("updated_at", 0)
                 now = time()
                 full_poll = False
-                if persist == self.should_poll:
+                if (persist == self.should_poll) or (
+                    persist and (wifi_api.socket is None)
+                ):
                     # use persistent connections after initial communication
                     # has been established.  Until then, we need to rotate
                     # the protocol version, which seems to require a fresh
@@ -334,9 +362,10 @@ class TuyaLocalDevice(object):
                     self._api.set_socketPersistent(persist)
                     if self._api.parent:
                         self._api.parent.set_socketPersistent(persist)
+                    self._last_full_poll = 0  # ensure we start with a full poll
 
-                needs_full_poll = now - self._last_full_poll > self._CACHE_TIMEOUT
-                if now - last_cache > self._CACHE_TIMEOUT or (
+                needs_full_poll = now - self._last_full_poll > self._POLLING_INTERVAL
+                if now - last_cache > self._POLLING_INTERVAL or (
                     persist and needs_full_poll
                 ):
                     if (
@@ -377,7 +406,15 @@ class TuyaLocalDevice(object):
                     poll = None
 
                 if poll:
-                    if "Error" in poll:
+                    if "Err" in poll:
+                        # Limit disconnects to the errors that are caused low level
+                        # communication problems
+                        if poll["Err"] in {"901", "902", "905", "906", "914"}:
+                            force_backoff = True
+                            persist = False
+                            self._api.set_socketPersistent(False)
+                            if self._api.parent:
+                                self._api.parent.set_socketPersistent(False)
                         # increment the error count if not done already
                         if error_count == self._api_working_protocol_failures:
                             self._api_working_protocol_failures += 1
@@ -398,12 +435,15 @@ class TuyaLocalDevice(object):
                     else:
                         if "dps" in poll:
                             poll = poll["dps"]
-                        poll["full_poll"] = full_poll
-                        yield poll
+                        if isinstance(poll, dict):
+                            poll["full_poll"] = full_poll
+                            yield poll
 
             except CancelledError:
                 self._running = False
                 # Close the persistent connection when exiting the loop
+                persist = False
+                _LOGGER.debug("%s receive loop interrupted", self.name)
                 self._api.set_socketPersistent(False)
                 if self._api.parent:
                     self._api.parent.set_socketPersistent(False)
@@ -415,14 +455,13 @@ class TuyaLocalDevice(object):
                     type(t).__name__,
                     t,
                 )
+                persist = False
                 self._api.set_socketPersistent(False)
                 if self._api.parent:
                     self._api.parent.set_socketPersistent(False)
                 force_backoff = True
-            finally:
-                if self._api_lock.locked():
-                    self._api_lock.release()
-            if not self.has_returned_state:
+
+            if not self.has_returned_state or wifi_api.socket is None:
                 force_backoff = True
             await asyncio.sleep(5 if force_backoff else 0.1)
 
@@ -619,18 +658,13 @@ class TuyaLocalDevice(object):
         )
 
     def _set_values(self, properties):
-        try:
-            self._lock.acquire()
-            self._api.set_multiple_values(properties, nowait=True)
-            self._cached_state["updated_at"] = 0
-            now = time()
-            self._last_connection = now
-            pending_updates = self._get_pending_updates()
-            for key in properties.keys():
-                pending_updates[key]["updated_at"] = now
-                pending_updates[key]["sent"] = True
-        finally:
-            self._lock.release()
+        self._api.set_multiple_values(properties, nowait=True)
+        now = time()
+        self._last_connection = now
+        pending_updates = self._get_pending_updates()
+        for key in properties.keys():
+            pending_updates[key]["updated_at"] = now
+            pending_updates[key]["sent"] = True
 
     async def _retry_on_failed_connection(self, func, error_message):
         if self._api_protocol_version_index is None:
@@ -638,19 +672,27 @@ class TuyaLocalDevice(object):
         auto = (self._protocol_configured == "auto") and (
             not self._api_protocol_working
         )
+        dev22 = self._protocol_configured in (3.22, 3.42, 3.52)
         connections = (
             self._AUTO_CONNECTION_ATTEMPTS
             if auto
-            else self._SINGLE_PROTO_CONNECTION_ATTEMPTS
+            else (
+                self._SINGLE_PROTO_CONNECTION_ATTEMPTS * 2
+                if dev22
+                else self._SINGLE_PROTO_CONNECTION_ATTEMPTS
+            )
         )
 
         last_err_code = None
+        last_err_msg = None
         for i in range(connections):
             try:
                 if not self._hass.is_stopping:
-                    retval = await self._hass.async_add_executor_job(func)
+                    async with self._api_lock:
+                        retval = await self._hass.async_add_executor_job(func)
                     if isinstance(retval, dict) and "Error" in retval:
                         last_err_code = retval.get("Err")
+                        last_err_msg = retval.get("Error")
                         if last_err_code == "900":
                             # Some devices (e.g. IR/RF remotes) never return
                             # status data; error 900 is their normal response
@@ -686,12 +728,24 @@ class TuyaLocalDevice(object):
                         self._api_protocol_working = False
                         for entity in self._children:
                             entity.async_schedule_update_ha_state()
+                    if last_err_code:
+                        log_format = "%s Device reported error %s: %s%s"
+                        log_args = (
+                            error_message,
+                            last_err_code,
+                            last_err_msg,
+                            _ERROR_HINTS.get(last_err_code, ""),
+                        )
+                    else:
+                        log_format = "%s"
+                        log_args = (error_message,)
+
                     if self._api_working_protocol_failures == 1 and not (
                         last_err_code == "914" and self._protocol_configured == "auto"
                     ):
-                        _LOGGER.error(error_message)
+                        _LOGGER.error(log_format, *log_args)
                     else:
-                        _LOGGER.debug(error_message)
+                        _LOGGER.debug(log_format, *log_args)
 
                 if not self._api_protocol_working:
                     await self._rotate_api_protocol_version()
@@ -746,9 +800,24 @@ class TuyaLocalDevice(object):
             self.name,
             new_version,
         )
-        # Only enable tinytuya's auto-detect when using 3.22
+        # Only enable tinytuya's "device22" auto-detect when exlpicitly requested
+        # as 3.22, 3.42, or 3.52
+        # Enabling this on other devices can cause them to stop responding to commands,
+        # as once tinytuya decides to switch to it, it never switches back.
+        # 3.2 always uses the "device22" protocol variant.
+        # 3.22 is a fake version that actually means 3.3 with auto-detect enabled
+        # likewise 3.42 and 3.52 actually mean 3.4 and 3.5 with auto-detect enabled.
+        #
+        # Note: "device22" is a misnomer for historical reasons. Not all devices with
+        # 22 character device ids use this protocol variant.
         if new_version == 3.22:
             new_version = 3.3
+            self._api.disabledetect = False
+        elif new_version == 3.42:
+            new_version = 3.4
+            self._api.disabledetect = False
+        elif new_version == 3.52:
+            new_version = 3.5
             self._api.disabledetect = False
         else:
             self._api.disabledetect = True
@@ -799,7 +868,19 @@ def setup_device(hass: HomeAssistant, config: dict):
 async def async_delete_device(hass: HomeAssistant, config: dict):
     device_id = get_device_id(config)
     _LOGGER.info("Deleting device: %s", device_id)
-    await hass.data[DOMAIN][device_id]["device"].async_stop()
-    del hass.data[DOMAIN][device_id]["device"]
-    del hass.data[DOMAIN][device_id]["tuyadevice"]
-    del hass.data[DOMAIN][device_id]["tuyadevicelock"]
+    domain_data = hass.data.get(DOMAIN, {})
+    device_entry = domain_data.get(device_id)
+    if device_entry is None:
+        return
+
+    device = device_entry.get("device")
+    if device is not None:
+        await device.async_stop()
+        device_entry.pop("device", None)
+    device_entry.pop("tuyadevice", None)
+    device_entry.pop("tuyadevicelock", None)
+    # Platform setup may cache entity instances in this bucket by config_id.
+    # Only drop empty buckets here; async_unload_entry removes the whole bucket
+    # after forwarded platform unloads complete.
+    if not device_entry:
+        domain_data.pop(device_id, None)

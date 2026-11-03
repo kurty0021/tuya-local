@@ -114,9 +114,17 @@ entities:
     dps:
       - id: 6
         type: integer
+        optional: true
         name: sensor
         unit: "%"
         class: measurement
+        mapping:
+          - dps_val: null
+            value_redirect: alt
+      - id: 13
+        type: integer
+        optional: true
+        name: alt
   - entity: binary_sensor
     class: problem
     category: diagnostic
@@ -305,8 +313,8 @@ entities:
     dps:
       - id: 114
         type: string
-        name: option
         optional: true
+        name: option
         mapping:
           - dps_val: AutoMode
             value: Auto

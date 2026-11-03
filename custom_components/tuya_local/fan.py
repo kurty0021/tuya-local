@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
-from homeassistant.const import STATE_ON
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
@@ -66,9 +65,6 @@ class TuyaLocalFan(TuyaLocalEntity, FanEntity):
             if r and r[0] == 0:
                 self._support_flags |= FanEntityFeature.TURN_OFF
 
-        # Until the deprecation period ends (expected 2025.2)
-        self._enable_turn_on_off_backwards_compatibility = False
-
     @property
     def supported_features(self):
         """Return the features supported by this climate device."""
@@ -77,13 +73,10 @@ class TuyaLocalFan(TuyaLocalEntity, FanEntity):
     @property
     def is_on(self):
         """Return whether the switch is on or not."""
+        # If there is no switch, it is always on
         if self._switch_dps is None:
             return self.available
-        if self._device.has_returned_state:
-            return self._switch_dps.get_value(self._device)
-        if self._last_restored_state:
-            return self._last_restored_state.state == STATE_ON
-        return None
+        return self._switch_dps.get_value(self._device)
 
     async def async_turn_on(
         self,

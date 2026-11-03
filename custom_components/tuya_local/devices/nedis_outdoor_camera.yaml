@@ -4,7 +4,40 @@ products:
     manufacturer: Nedis
     model: WIFICO11CWT
 entities:
+  - entity: switch
+    translation_key: camera_record
+    dps:
+      - id: 150
+        type: boolean
+        optional: true
+        name: switch
+  - entity: event
+    class: motion
+    dps:
+      - id: 115
+        type: base64
+        name: event
+        optional: true
+        mapping:
+          - dps_val: null
+            value: null
+          - value: detected
+      - id: 115
+        type: base64
+        optional: true
+        name: snapshot
+  - entity: switch
+    translation_key: motion_detection
+    category: config
+    dps:
+      - id: 134
+        type: boolean
+        optional: true
+        name: switch
   - entity: camera
+    # 2026-06-08
+    deprecated: >-
+      switch_camera_record, event_motion, switch_motion_detection
     dps:
       - id: 115
         name: snapshot
@@ -47,9 +80,8 @@ entities:
             value: false
             hidden: true
   - entity: switch
-    name: Watermark
+    translation_key: watermark
     category: config
-    icon: "mdi:watermark"
     dps:
       - id: 104
         type: boolean
@@ -75,8 +107,7 @@ entities:
           - dps_val: "2"
             value: high
   - entity: select
-    name: Night vision
-    icon: "mdi:weather-night"
+    translation_key: night_vision
     category: config
     dps:
       - id: 108
@@ -85,16 +116,14 @@ entities:
         optional: true
         mapping:
           - dps_val: "0"
-            value: Auto
+            value: auto
           - dps_val: "1"
-            value: "Off"
+            value: "off"
           - dps_val: "2"
-            value: "On"
-          - dps_val: null
-            value: Unknown
-            hidden: true
+            value: "on"
   - entity: sensor
     name: SD capacity
+    deprecated: sensor_sd_status.capacity  # 2026-08-19
     category: diagnostic
     icon: "mdi:micro-sd"
     dps:
@@ -103,11 +132,9 @@ entities:
         name: sensor
         optional: true
   - entity: sensor
-    name: SD status
     class: enum
-    translation_key: status
+    translation_key: sd_status
     category: diagnostic
-    icon: "mdi:micro-sd"
     dps:
       - id: 110
         type: integer
@@ -126,6 +153,10 @@ entities:
             value: missing
           - dps_val: null
             value: normal
+      - id: 109
+        type: string
+        name: capacity
+        optional: true
   - entity: button
     name: SD format
     category: config
@@ -186,8 +217,7 @@ entities:
             value: Unknown
             hidden: true
   - entity: select
-    name: Recording mode
-    icon: "mdi:file-video"
+    translation_key: recording_mode
     category: config
     dps:
       - id: 151
@@ -196,12 +226,9 @@ entities:
         optional: true
         mapping:
           - dps_val: "1"
-            value: Event
+            value: event
           - dps_val: "2"
-            value: Continuous
-          - dps_val: null
-            value: None
-            hidden: true
+            value: continuous
   - entity: switch
     name: Motion alarm area
     icon: "mdi:crop"

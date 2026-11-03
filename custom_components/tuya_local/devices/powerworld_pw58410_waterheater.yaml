@@ -163,13 +163,17 @@ entities:
     dps:
       - id: 15
         type: bitfield
+        optional: true
         name: sensor
         mapping:
           - dps_val: 0
             value: false
+          - dps_val: null
+            value: false
           - value: true
       - id: 15
         type: bitfield
+        optional: true
         name: fault_code
       - id: 199
         type: integer
@@ -185,7 +189,7 @@ entities:
         optional: true
         name: button
   - entity: sensor
-    name: Inlet temperature
+    translation_key: inlet_temperature
     class: temperature
     category: diagnostic
     dps:
@@ -198,6 +202,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -206,7 +211,7 @@ entities:
             value: F
           - value: C
   - entity: sensor
-    name: Outlet temperature
+    translation_key: outlet_temperature
     class: temperature
     category: diagnostic
     dps:
@@ -219,6 +224,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -239,6 +245,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -260,6 +267,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -281,6 +289,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -302,6 +311,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -323,6 +333,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -368,6 +379,7 @@ entities:
                00000000000000000000000000000000FFFFFFFF00000000\
                000000000000000000000000000000000000000000000000\
                0000000000000000"
+        class: measurement
   - entity: sensor
     name: Heat sink temperature
     class: temperature
@@ -382,6 +394,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -403,6 +416,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                FFFFFFFF0000000000000000000000000000000000000000\
                0000000000000000"
+        class: measurement
   - entity: sensor
     name: Compressor frequency
     class: frequency
@@ -456,6 +470,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                00000000000000000000000000000000FFFFFFFF00000000\
                0000000000000000"
+        class: measurement
   - entity: sensor
     name: Low pressure gas temperature
     class: temperature
@@ -470,6 +485,7 @@ entities:
                0000000000000000000000000000000000000000FFFFFFFF\
                0000000000000000"
         mask_signed: true
+        class: measurement
       - id: 6
         type: string
         name: unit
@@ -506,6 +522,7 @@ entities:
                000000000000000000000000000000000000000000000000\
                000000000000000000000000000000000000000000000000\
                0000000000000000"
+        class: measurement
         mapping:
           - scale: 10
   - entity: sensor
@@ -517,6 +534,7 @@ entities:
         optional: true
         name: sensor
         unit: A
+        class: measurement
         mask: "0000000000000000FFFFFFFF000000000000000000000000\
                000000000000000000000000000000000000000000000000\
                000000000000000000000000000000000000000000000000\
@@ -530,6 +548,7 @@ entities:
         optional: true
         name: sensor
         unit: V
+        class: measurement
         mask: "000000000000000000000000FFFFFFFF0000000000000000\
                000000000000000000000000000000000000000000000000\
                000000000000000000000000000000000000000000000000\
@@ -543,6 +562,7 @@ entities:
         optional: true
         name: sensor
         unit: W
+        class: measurement
         mask: "00000000000000000000000000000000FFFFFFFF00000000\
                000000000000000000000000000000000000000000000000\
                000000000000000000000000000000000000000000000000\
